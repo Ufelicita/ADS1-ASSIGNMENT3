@@ -1,3 +1,10 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Jan 23 19:31:43 2024
+
+@author: -
+"""
+
 import os
 import pandas as pd
 import sklearn.preprocessing as pp
@@ -9,6 +16,8 @@ import sklearn.metrics as skmet
 import numpy as np
 from sklearn.cluster import KMeans
 from sklearn import metrics
+from sklearn.preprocessing import MinMaxScaler
+# Set OMP_NUM_THREADS to 1
 
 
 def read_transpose_clean(file):
@@ -29,140 +38,108 @@ def read_transpose_clean(file):
     clean_df = df_t.dropna()
 
     # check for NANs
-    print(clean_df.isnull().sum())
-
-    # Delete first 2 rows
-    clean_df = clean_df.iloc[2:112, :]
+    print(clean_df.isna().any())
 
     # set 1st row as headers # Make the first row as header
     clean_df.columns = clean_df.iloc[0].values.tolist()
 
-    # Delete 1st 2 rows
-    clean_df = clean_df.iloc[2:, :]
+    # Delete first 2 rows
+    clean_df = clean_df.iloc[4:67, :]
 
-    # Rename columns
-    clean_df = clean_df.rename(columns={
-        "Trade (% of GDP)": "Trade",
-        "Exports of goods and services (% of GDP)":
-        "Exports of goods and services",
-        "Foreign direct investment, net inflows (% of GDP)":
-        "Foreign direct investment"})
-
-    cols = clean_df.columns[:]
-    clean_df = clean_df[cols].apply(pd.to_numeric)
-
-    # check type
-    print(clean_df.dtypes)
+    # reset index
+    clean_df = clean_df.reset_index()
 
     return clean_df
 
 
 # Analyse cleaned data
 clean_df = read_transpose_clean(
-    "6169b9ce-b902-440b-b18f-78cb7c0bf598_Data.csv")
+    "API_SP.DYN.LE00.IN_DS2_en_excel_v2_6508273.csv")
 
-# Summary statistics for numerical data
-print("\nNumerical Summary:")
-print(clean_df.describe())
+# Creating a subset for use for Clustering
+life_df = clean_df.transpose()
+
+print(life_df.describe())
+
+life_df = life_df.reset_index()
+
+# set 1st row as headers # Make the first row as header
+life_df.columns = life_df.iloc[0].values.tolist()
+
+# remove 1st row
+life_df = life_df.iloc[1:35]
+
+year_columns = life_df.columns[1:]
+
+# Convert the selected columns to numeric
+life_df[year_columns] = life_df[year_columns].apply(pd.to_numeric,
+                                                    errors='coerce')
+
+# Display the data types of the columns
+print(life_df.dtypes)
+
+print(clean_df.isna().any())
+
+# creating a dataframe with just 1971 and 2021
+life_exp = life_df[['index', '1971', '2021']].copy()
+
+life_exp = life_exp.set_index(["index"])
+
+value_diff = life_exp['2021'] - life_exp['1971']
+
+# calculate the growth over 40 years
+life_exp["Change Rate"] = 100.0/40.0 * value_diff / life_exp["1971"]
 
 
-def create_and_save_heatmap(dataframe):
+print(life_exp.describe())
+
+# Create a scatter plot to visualize life expectancy trends
+plt.figure(figsize=(8, 8))
+plt.scatter(life_exp["1971"], life_exp["Change Rate"])
+plt.xlabel("Life Expectancy in 1971")
+plt.ylabel("Change Rate [%]")
+plt.title("Life Expectancy Trends Over Time")
+plt.show()
+
+columns = ["1971", "Change Rate"]
+life_exp_scaled = life_exp[columns]
+
+
+def plot_normalized_life_expectancy_trends(data):
     """
-    Group similar columns together, calculate the correlation matrix,
-    and create a heatmap.
+    Plot life expectancy data using MinMaxScaler.
 
-    Parameters:
-    - dataframe (pd.DataFrame): Input DataFrame containing numeric data.
+    Args:
+    - life_exp: DataFrame containing life expectancy data.
+    - columns: List of columns to plot (default is ["1971", "Change Rate"]).
 
     Returns:
     - None
-
-    Saves a heatmap plot as 'heatmap.png' and displays the plot.
     """
 
-    # Calculate the correlation matrix
-    corr_matrix = dataframe.corr()
+    # Create a scaler object
+    scaler = MinMaxScaler()
 
-    # Create a heatmap
-    plt.figure(figsize=[10, 8])
-    plt.imshow(corr_matrix, cmap='viridis', aspect='auto', vmin=-1, vmax=1)
-    plt.colorbar()
-    plt.xticks(ticks=range(len(corr_matrix)), labels=corr_matrix.columns,
-               rotation=45)
-    plt.yticks(ticks=range(len(corr_matrix)), labels=corr_matrix.index)
-    plt.title('Correlation Heatmap')
+    # Fit the scaler
+    scaler.fit(life_exp_scaled)
 
-    # Save and show the plot
-    plt.savefig("heatmap.png")
+    # Apply the scaling
+    life_exp_norm = scaler.transform(life_exp_scaled)
+
+    # Plot the scatter plot
+    plt.figure(figsize=(8, 8))
+    plt.scatter(life_exp_norm[:, 0], life_exp_norm[:, 1])
+    plt.xlabel(f"{columns[0]} (Normalized)")
+    plt.ylabel(f"{columns[1]} (Normalized)")
+    plt.title("Scaled Life Expectancy Trends")
     plt.show()
-
     return
 
 
- # Group similar columns together
-grouped_df = clean_df.groupby(lambda x: x.split(' ')[0], axis=1).sum()
-create_and_save_heatmap(grouped_df)
+plot_normalized_life_expectancy_trends(life_exp)
 
 
-def plot_scatter_plot(data, x_column, y_column, x_label, y_label,
-                      title=None, figsize=(8, 8)):
-    """
-    Generate a scatter plot.
-
-    Parameters:
-    - data: DataFrame containing the data.
-    - x_column: Name of the column for the x-axis.
-    - y_column: Name of the column for the y-axis.
-    - x_label: Label for the x-axis.
-    - y_label: Label for the y-axis.
-    - title: Title of the plot (default is None).
-    - figsize: Tuple specifying the size of the figure (default is (8, 8)).
-
-    Returns:
-    None
-    """
-
-    plt.figure(figsize=figsize)
-    plt.scatter(data[x_column], data[y_column])
-    plt.xlabel(x_label)
-    plt.ylabel(y_label)
-    plt.title(title)
-    plt.savefig("figure_name.png", dpi=300)
-    plt.show()
-
-    return
-
-
-grouped_df = clean_df.groupby(lambda x: x.split(' ')[0], axis=1).sum()
-
-plot_scatter_plot(grouped_df, 'Trade', 'Foreign',
-                  'Trade (% of GDP)', 'Foreign Investments',
-                  'A comparison of Trade (% of GDP) and Foreign Investments',
-                  figsize=(8, 8))
-grouped_df
-
-# set up   scaler object
-scaler = pp.RobustScaler()
-
-# extract relevant columns
-df_extract = grouped_df.iloc[:, 1:]
-
-# and set up the scaler
-scaler.fit(df_extract)
-
-# apply the scaling
-norm = scaler.transform(df_extract)
-
-# the results is now a numpy array
-print(norm)
-
-# Plot Figure
-plt.figure(figsize=(8, 8))
-plt.scatter(norm[:, 0], norm[:, 1], 10, marker="o")
-plt.xlabel("Trade(% of GDP")
-plt.ylabel("Foreign Invesements ")
-plt.title('Scaled:A comparison of Trade (% of GDP) and Foreign Investments')
-plt.show()
+os.environ["OMP_NUM_THREADS"] = "1"
 
 
 def calculate_silhouette_score(data, n_clusters):
@@ -177,6 +154,8 @@ def calculate_silhouette_score(data, n_clusters):
     Returns:
     - Silhouette score.
     """
+
+
     # Initialize KMeans with the specified number of clusters
     kmeans = KMeans(n_clusters=n_clusters, n_init=20, random_state=42)
 
@@ -187,72 +166,65 @@ def calculate_silhouette_score(data, n_clusters):
     labels = kmeans.labels_
 
     # Calculate the silhouette score
-    silhouette_score = metrics.silhouette_score(data, labels)
+    silhouette_score = score = (skmet.silhouette_score(data, labels))
 
     return silhouette_score
 
 
-def kmeans_clustering(data, n_clusters, indicator1, indicator2, figsize=(8, 8),
-                      ):
-    """
-    Perform K-Means clustering on the input data.
+# calculate silhouette score for 2 to 10 clusters
+for ic in range(2, 11):
+    score = calculate_silhouette_score(life_exp_scaled, ic)
+    print(f"The silhouette score for {ic: 3d} is {score: 7.4f}")
 
-    Parameters:
+
+def kmeans_clustering_visualization(data, feature_indices,
+                                    n_clusters=3, figsize=(8, 8),
+                                    cmap_name="Paired"):
+    """
+    Perform K-Means clustering on the input data and visualize the results.
+
+    Args:
     - data: DataFrame containing the features for clustering.
-    - n_clusters: Number of clusters to form.
+    - feature_indices: List of column indices for clustering.
+    - n_clusters: Number of clusters to form
     - figsize: Tuple specifying the size of the figure (default is (8, 8)).
     - cmap_name: Name of the colormap for cluster visualization
-    (default is "Paired").
 
     Returns:
     - None
     """
-    # Select features for clustering
-    trade_norm =  data.loc[:, [indicator1, indicator2]]
 
-    # Standardize the data
-    scaler = pp.RobustScaler()
-    trade_norm = scaler.fit_transform(trade_norm)
 
-    # Set up the clusterer with the number of expected clusters
+    # Scale the data using StandardScaler
+    scaler = MinMaxScaler()
+    norm = scaler.fit_transform(data)
+
+    # Perform K-Means clustering on the scaled data
     kmeans = KMeans(n_clusters=n_clusters, n_init=20)
+    kmeans.fit(norm)
 
-    # Fit the data
-    kmeans.fit(trade_norm)
-
-    # Get cluster labels
+    # Extract cluster labels
     labels = kmeans.labels_
 
-    # Extract the estimated cluster centres and reverse to orginal scales
-    centers = kmeans.cluster_centers_
-    centers = scaler.inverse_transform(centers)
-
-    # Extract x and y values
-    xmeans = centers[:, 0]
-    ymeans = centers[:, 1]
+    # Extract the estimated cluster centres and convert to original scales
+    cen = kmeans.cluster_centers_
+    cen = scaler.inverse_transform(cen)
 
     # Plot the figure
     plt.figure(figsize=figsize)
 
-    # Plot data with K-Means cluster numbers
-    cmap = "paired"
-    scatter = plt.scatter(
-        data["indicator1"], data["indicator2"], s=50, c=labels, cmap=cmap,
-        alpha=0.7)
+    # Plot data with K-Means cluster number
+    cmap = cm.get_cmap(cmap_name)
+    scatter = plt.scatter(data.iloc[:, feature_indices[0]],
+                          data.iloc[:, feature_indices[1]], s=50,
+                          c=labels, cmap=cmap, alpha=0.7)
 
-    # Plot K-Means cluster centers
-    plt.scatter(xmeans, ymeans,
-                s=100, c="k", marker="D", label='Cluster Centers')
+    # Show K-Means cluster centers
+    plt.scatter(cen[:, 0], cen[:, 1], s=100,
+                c="k", marker="D", label='Cluster Centers')
 
-    plt.xlabel("indicator1")
-    plt.ylabel("indicator2")
-
-    # Show cluster labels as text annotations
-    for i, txt in enumerate(labels):
-        plt.annotate(txt, (data[indicator1].iloc[i], 
-                           data[indicator2].iloc[i]),
-                     fontsize=10, color='red')
-
+    plt.xlabel("Life expectancy 1971")
+    plt.ylabel("Life Expectancy Rate(%)")
 
     # Show the colorbar
     plt.colorbar(scatter, label='Cluster Labels')
@@ -260,33 +232,15 @@ def kmeans_clustering(data, n_clusters, indicator1, indicator2, figsize=(8, 8),
     # Show the legend
     plt.legend()
 
-    # Show the plot
-    plt.show()
-
-    # Plot labels for better visibility
-    plt.figure(figsize=figsize)
-    plt.scatter(data["indicator1"], data["indicator2"],
-                s=50, c=labels, cmap=cmap, alpha=0.7)
-    plt.scatter(xmeans, ymeans,
-                s=100, c="k", marker="D", label='Cluster Centers')
-    plt.xlabel("indicator1")
-    plt.ylabel("indicator2")
-    plt.title(
-        "Global Investment Impact: Unraveling Trade Dynamics through Clustering")
-
     plt.savefig("figure_name.png", dpi=300)
 
+    # Show the plot
     plt.show()
-
-    # Add Cluster membership
-    data[labels] = labels
-
-    # write to excel file
-    data.to_excel("cluster_results.xlsx")
-    print(data.head())
+        
     return
 
+# Example usage
+kmeans_clustering_visualization(life_exp,
+                                feature_indices=[0, 1],
+                                n_clusters=3)
 
-# Call the function with cluster number
-kmeans_clustering(df_extract, n_clusters=3,
-                  indicator1="Foreign", indicator2="Trade")
