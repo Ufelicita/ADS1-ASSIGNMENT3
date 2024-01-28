@@ -1,17 +1,12 @@
 # -*- coding: utf-8 -*-
 """
+ADS 1: Clustering and Fitting Assignment 3
 Created on Thu Jan 25 20:55:37 2024
 
 @author: fa22aep
 """
 
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Jan 23 19:31:43 2024
 
-@author: -
-"""
-# Set OMP_NUM_THREADS to 1
 import os
 import pandas as pd
 import sklearn.preprocessing as pp
@@ -130,9 +125,11 @@ clean_df_t["% change"] = 100.0 / 50.0 * value_diff / clean_df_t["1971"]
 print(clean_df_t)
 
 
-def plot_scatter(df, x_column, y_column, cmap='Paired', size=100):
+def Visualise_Life_expectancy_evolution(df, x_column,
+                                        y_column, cmap='Paired',
+                                        size=100):
     """
-    Plot a scatter plot to  visually examining the data of  life expectancy 
+    Plot a scatter plot to  visually examine the data of  life expectancy 
     in 1971 and its correlation with the percentage change over a 
     50-year period
 
@@ -159,8 +156,10 @@ def plot_scatter(df, x_column, y_column, cmap='Paired', size=100):
     return
 
 
-# Using the function to plot without colorbar
-plot_scatter(clean_df_t, "1971", "% change", cmap='Paired', size=100)
+# Using the function to plot
+Visualise_Life_expectancy_evolution(clean_df_t,
+                                    "1971", "% change",
+                                            cmap='Paired', size=100)
 
 
 def plot_normalized_life_expectancy_trends(df, x_column, y_column, size=100):
@@ -175,7 +174,7 @@ def plot_normalized_life_expectancy_trends(df, x_column, y_column, size=100):
     """
 
     # Normalize the data using MinMaxScaler
-    scaler = MinMaxScaler()
+    scaler = RobustScaler()
     normalized_df = pd.DataFrame(
         scaler.fit_transform(df[[x_column, y_column]]),
         columns=[x_column, y_column]
@@ -189,6 +188,7 @@ def plot_normalized_life_expectancy_trends(df, x_column, y_column, size=100):
     plt.title(
         f'Normalized Life Expectancy Evolution vs {y_column}', fontsize=18)
 
+    # Plot labels and ticks
     plt.xlabel(f'Normalized {x_column}', fontsize=14)
     plt.ylabel(f'Normalized {y_column}', fontsize=14)
     plt.xticks(rotation=45, ha='right', fontsize=12)
@@ -203,8 +203,6 @@ def plot_normalized_life_expectancy_trends(df, x_column, y_column, size=100):
 # Using the function to plot with normalized data
 plot_normalized_life_expectancy_trends(clean_df_t, "1971",
                                        "% change", size=100)
-
-os.environ["OMP_NUM_THREADS"] = "1"
 
 
 def compute_silhouette_score(data, n_clusters):
@@ -235,77 +233,13 @@ def compute_silhouette_score(data, n_clusters):
     return silhouette_score
 
 
-# calculate silhouette score for 2 to 10 clusters
+# calculate silhouette score for 2 to 10 clusters with function
 for ic in range(2, 11):
     score = compute_silhouette_score(clean_df_t, ic)
     print(f"The silhouette score for {ic: 3d} is {score: 7.4f}")
 
 
-def kmeans_clustering_visualization(data, feature_indices,
-                                    n_clusters=3, figsize=(8, 8),
-                                    cmap_name="Paired"):
-    """
-    Perform K-Means clustering on the input data and visualize the results.
-
-    Args:
-    - data: DataFrame containing the features for clustering.
-    - feature_indices: List of column indices for clustering.
-    - n_clusters: Number of clusters to form
-    - figsize: Tuple specifying the size of the figure (default is (8, 8)).
-    - cmap_name: Name of the colormap for cluster visualization
-
-    Returns:
-    labels:cluster labels 
-    """
-
-    # Scale the data using Robustscaler
-    scaler = pp.RobustScaler()
-    norm = scaler.fit_transform(data)
-
-    # Perform K-Means clustering on the scaled data
-    kmeans = KMeans(n_clusters=n_clusters, n_init=20)
-    kmeans.fit(norm)
-
-    # Extract cluster labels
-    labels = kmeans.labels_
-
-    # Extract the estimated cluster centres and convert to original scales
-    cen = kmeans.cluster_centers_
-    cen = scaler.inverse_transform(cen)
-    print(cen)
-
-    # Plot the figure
-    plt.figure(figsize=figsize)
-
-    # Plot data with K-Means cluster number
-    cmap = cm.get_cmap(cmap_name)
-    scatter = plt.scatter(data.iloc[:, feature_indices[0]],
-                          data.iloc[:, feature_indices[1]], s=50,
-                          c=labels, cmap=cmap, alpha=0.7)
-
-    # Show K-Means cluster centers
-    plt.scatter(cen[:, 0], cen[:, 1], s=100,
-                c="k", marker="D", label='Cluster Centers')
-
-    plt.xlabel("Life expectancy 1971")
-    plt.ylabel("Life Expectancy Rate(%)")
-    plt.title("Life Expectancy and its Rate of Change in 1971")
-
-    # Show the colorbar
-    plt.colorbar(scatter, label='Cluster Labels')
-
-    # Show the legend
-    plt.legend()
-
-    plt.savefig("figure_name.png", dpi=300)
-
-    # Show the plot
-    plt.show()
-
-    return labels
-
-
-def cluster_life_expectancy(df):
+def kmeans_clustering_life_expectancy(df):
     """
     Cluster life expectancy patterns based on 1971 values
     and percentage change.
@@ -328,7 +262,7 @@ def cluster_life_expectancy(df):
     scaler.fit(life_expectancy_change)
 
     # Set up the clusterer with the number of expected clusters
-    kmeans = cluster.KMeans(n_clusters=3, n_init=20)
+    kmeans = KMeans(n_clusters=3, n_init=20)
 
     # Transform data using the scaler
     norm = scaler.transform(life_expectancy_change)
@@ -342,7 +276,6 @@ def cluster_life_expectancy(df):
     # Extract the estimated cluster centres and convert to original scales
     cen = kmeans.cluster_centers_
     cen = scaler.inverse_transform(cen)
-    (print(cen))
 
     xkmeans = cen[:, 0]
     ykmeans = cen[:, 1]
@@ -350,15 +283,23 @@ def cluster_life_expectancy(df):
     plt.figure(figsize=(8.0, 8.0))
 
     # Plot data with kmeans cluster number
-    plt.scatter(life_expectancy_change["1971"],
-                life_expectancy_change["% change"],
-                50, labels, marker="o", cmap="Paired")
+    scatter = plt.scatter(life_expectancy_change["1971"],
+                          life_expectancy_change["% change"],
+                          50, labels, marker="o", cmap="Paired",
+                          label="Data Points")
 
     # Show cluster centres
-    plt.scatter(xkmeans, ykmeans, 60, "k", marker="d")
+    plt.scatter(xkmeans, ykmeans, 60, "k", marker="d", label="Cluster Centers")
+
     plt.title("Clustered Scatter Plot of Life Expectancy Patterns (1971-2021)")
     plt.xlabel("Life Expectancy in 1971")
     plt.ylabel("Percentage Change in Life Expectancy")
+
+    # Show the legend with cluster numbers
+    legend_labels = [f"Cluster {i}" for i in range(3)]
+    plt.legend(handles=scatter.legend_elements()[0], title="Legend",
+               labels=legend_labels)
+
     plt.savefig("clustered_scatter_plot.png", dpi=300)
     plt.show()
 
@@ -370,68 +311,196 @@ def cluster_life_expectancy(df):
 
     return life_expectancy_change
 
+    # Add the cluster membership information to the dataframe
+    life_expectancy_change["labels"] = labels
 
-result_df = cluster_life_expectancy("life_expectancy_change")
+    # Write into a file
+    life_expectancy_change.to_excel("cluster_results.xlsx")
+
+    return life_expectancy_change
 
 
-# Normalize the data
-scaler = MinMaxScaler()
-result_df[['1971', '% change']] = scaler.fit_transform(
-    result_df[['1971', '% change']])
+# Use function on DataFrame
+result_df = kmeans_clustering_life_expectancy("life_expectancy_change")
 
-# Group the data by 'labels'
-grouped_data = result_df.groupby('labels')
 
-# Define bar width and positions
-bar_width = 0.35
-labels = sorted(result_df['labels'].unique())
+def plot_cluster_comparison(result_df):
+    """
+    Plot a grouped bar chart comparing life expectancy 
+    and percentage change for different countries within each label.
 
-# Create subplots
-fig, axes = plt.subplots(nrows=1, ncols=len(
-    labels), figsize=(15, 5), sharey=True)
+    Parameters:
+    - result_df (pd.DataFrame): DataFrame containing 
 
-# Custom color palette
-# Coral for life expectancy, Burgundy for percentage change
-colors = ['#FFA07A', '#800020']
+    Returns:
+    - None (displays the plot).
+    """
 
-for label, ax in zip(labels, axes):
-    data_label = grouped_data.get_group(label)
-    countries = data_label.index
-    life_expectancy = data_label['1971']
-    percentage_change = data_label['% change']
+    # Assuming the columns are named "1971", "% change", and "labels"
+    life_expectancy_change = result_df[["1971", "% change", "labels"]].copy()
 
-    r1 = np.arange(len(countries))
+    # Normalize the data
+    scaler = MinMaxScaler()
+    life_expectancy_change[
+        ["1971", "% change"]] = scaler.fit_transform(life_expectancy_change[
+            ["1971", '% change']])
 
-    # Create grouped bar chart with custom colors
-    bars_life = ax.bar(
-        r1, life_expectancy, color=colors[0],
-        width=bar_width, edgecolor='grey', label='Life Expectancy')
-    bars_percentage = ax.bar(r1, percentage_change, bottom=life_expectancy,
-                             color=colors[1], width=bar_width,
-                             edgecolor='grey', label='% Change')
+    # Group the data by 'labels'
+    grouped_data = life_expectancy_change.groupby('labels')
 
-    # Set labels and title
-    ax.set_xlabel('Countries')
-    ax.set_title(f'Label {label}')
+    # Define bar width and positions
+    bar_width = 0.35
+    labels = sorted(life_expectancy_change["labels"].unique())
 
-    # Set x-axis ticks and labels
-    ax.set_xticks(np.arange(len(countries)))
-    ax.set_xticklabels(countries, rotation=45, ha='right')
+    # Create subplots
+    fig, axes = plt.subplots(nrows=1, ncols=len(labels), figsize=(15, 5),
+                             sharey=True)
 
-# Set common y-axis label
-fig.text(0, 0.5, 'Normalized Values', va='center', rotation='vertical')
+    # Custom color palette
+    colors = ["#FFA07A", "#800020"]
 
-# Create a single legend for the entire plot
-fig.legend([bars_life, bars_percentage], [
-           'Life Expectancy', '% Change'], loc='upper right')
+    for label, ax in zip(labels, axes):
+        data_label = grouped_data.get_group(label)
+        countries = data_label.index
+        life_expectancy = data_label["1971"]
+        percentage_change = data_label["% change"]
 
-# Set the overall title
-fig.suptitle(
-    'Comparison of Cluster Labels: Life Expectancy and % Change (1971-2021)',
-    fontsize=16)
+        r1 = np.arange(len(countries))
 
-# Adjust layout
-plt.tight_layout(rect=[0, 0, 1, 0.95])
+        # Create grouped bar chart with custom colors
+        bars_life = ax.bar(r1, life_expectancy, color=colors[0],
+                           width=bar_width,
+                           edgecolor="grey", label="Life Expectancy")
+        bars_percentage = ax.bar(r1, percentage_change,
+                                 bottom=life_expectancy,
+                                 color=colors[1], width=bar_width,
+                                 edgecolor="grey", label="% Change")
 
-# Show the plot
-plt.show()
+        # Set labels and title
+        ax.set_xlabel("Countries")
+        ax.set_title(f"Label {label}")
+
+        # Set x-axis ticks and labels
+        ax.set_xticks(np.arange(len(countries)))
+        ax.set_xticklabels(countries, rotation=45, ha="right")
+
+    # Set common y-axis label
+    fig.text(0, 0.5, "Normalized Values", va="center", rotation="vertical")
+
+    # Create a single legend for the entire plot
+    fig.legend([bars_life, bars_percentage],
+               ["Life Expectancy", "% Change"], loc="upper right")
+
+    # Set the overall title
+    fig.suptitle(
+        "Comparison of Cluster Labels: Life Expectancy and % Change (50yrs)",
+        fontsize=16)
+
+    # Adjust layout
+    plt.tight_layout(rect=[0, 0, 1, 0.95])
+
+    # Show the plot
+    plt.show()
+
+    return
+
+
+# Use function on DataFrame
+plot_cluster_comparison(result_df)
+
+
+""" Using one country from each of the 3 clusters for fitting. Angola was 
+chosen for cluster 0 which had low life expectancy but has experienced 
+an increase over a 5o year period. For same period , China was selected 
+from Cluster2 (fairly low life expectancy and average % increase ) and 
+Switzerland was chosen from cluster 1
+ ( low Percent change and high life expectancy)
+ """
+
+
+# Extract data from 1971 onwards to use for clustering
+df_china = pd.DataFrame(clean_df_t.loc["China", "1971":"2021"])
+
+df_angola = pd.DataFrame(clean_df_t.loc["Angola", "1971":"2021"])
+
+df_switzerland = pd.DataFrame(clean_df_t.loc["Switzerland", "1971":"2021"])
+
+
+def fit_exponential_growth(df, column_name, p0=None, output_excel=None):
+    """
+    Fit an exponential growth curve to a given pandas DataFrame and
+    display the results.
+
+    Args:
+    - df (pandas DataFrame): The input DataFrame where 'Year' is the index.
+    - column_name (str): The name of the column containing the series data.
+    - p0 (list, optional): Initial guess for the parameters scale and growth.
+    - output_excel (str, optional): File path to save the forecasting results 
+    to an Excel file.
+
+    Returns:
+    None
+    """
+    print(df.columns)
+    # Extracting time and series data
+    year = df.index
+    year = year.astype(int)
+    series = df[column_name]
+    print(type(year))
+    # Define the exponential growth function
+
+    def exp_growth(t, scale, growth):
+        t = t - 1971  # Adjusting the starting point based on the minimum year
+        f = scale * np.exp(growth * t)
+        return f
+
+    # If p0 is not provided, use a default initial guess
+    if p0 is None:
+        p0 = [series.min(), 0.03]
+
+    # Fit exponential growth
+    popt, pcov = opt.curve_fit(exp_growth, year, series, p0=p0)
+
+    # Create a DataFrame for forecasting results
+    forecast_years = np.arange(2022, 2051)  # Adjust as needed
+    forecast_data = exp_growth(forecast_years, *popt)
+    forecast_df = pd.DataFrame(
+        {'Year': forecast_years, column_name: forecast_data})
+    forecast_df.set_index('Year', inplace=True)
+
+    # Save the forecasting results to Excel if specified
+    if output_excel is not None:
+        forecast_df.to_excel(output_excel)
+        print(f"Forecasting results saved to {output_excel}")
+
+    # Plot the data and the fitted exponential growth
+    plt.figure()
+    plt.plot(year, series, label="Data")
+    plt.plot(year, exp_growth(year, *popt), label="Exponential Growth Fit")
+    plt.plot(forecast_years, forecast_data, label="Forecast")
+    plt.legend()
+    plt.title(f"Exponential Growth Fit to {column_name} Data with Forecasting")
+    plt.xlabel("Year")
+    plt.ylabel(column_name)
+    plt.show()
+
+    # Display the fitted parameters
+    print(f"Fit parameters: {popt}")
+    print(f"Projected {column_name} in 2031: {exp_growth(2031, *popt)}")
+    print(f"Projected {column_name} in 2041: {exp_growth(2041, *popt)}")
+    print(f"Projected {column_name} in 2051: {exp_growth(2051, *popt)}")
+
+# Example usage:
+# Assuming you have DataFrames named df_china, df_angola, df_switzerland
+
+
+# Call the function for China with a specific initial guess and save to Excel
+fit_exponential_growth(df_china, "China", output_excel="china_forecast.xlsx")
+
+# Call the function for Angola with different intial guess and save to Excel
+fit_exponential_growth(df_angola, "Angola", p0=[
+                       70, 0.09], output_excel="angola_forecast.xlsx")
+
+# Call the function for Switzerland with different  guess and save to Excel
+fit_exponential_growth(df_switzerland, "Switzerland", p0=[
+                       80, 0.02], output_excel="switzerland_forecast.xlsx")
